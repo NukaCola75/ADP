@@ -421,7 +421,7 @@ Function REBOOT_DEMAND($RCode)
 
 $Installtype = "USER"               # USER for user installation or SYSTEM for a system installation
 $Application_Name = "ADP POINTAGE ASSIST"          # Application name
-$Application_Version = "V02.00"       # Application version
+$Application_Version = "V02.01"       # Application version
 $Arch = 64                        # 32 or 64
 $Kill_Process = @()             # Process to kil. If neccessary. Ex: $Kill_Process = @("chrome","iexplore","firefox")
 $Reboot_Code = 0                # 3010 for reboot
@@ -481,11 +481,12 @@ KILL_PROCESS $Kill_Process
 #EXECUTE_UNINSTALL_MSI "{23170F69-40C1-2702-1801-000001000000}" "/qn /l* `"C:\temp\sccm_logs\Remove_7ZIP V18.01.log`"" "{23170F69-40C1-2702-1801-000001000000}" "REG KEY" "FILE" 0 64
 #EXECUTE_UNINSTALL_APPX "B4D42709.CheckPointVPN"
 
-EXECUTE_UNINSTALL_MSI "{EA5370B7-270B-471B-B521-60A803EF942C}" "/qn /l* `"C:\temp\sccm_logs\Remove_ADP POINTAGE ASSIST V02.00.log`"" "{EA5370B7-270B-471B-B521-60A803EF942C}" "" "" 0 64
+EXECUTE_UNINSTALL_MSI "{FE41F054-D03A-4244-887E-00ED680C82C5}" "/qn /l* `"C:\temp\sccm_logs\Remove_ADP POINTAGE ASSIST V02.01.log`"" "{FE41F054-D03A-4244-887E-00ED680C82C5}" "" "" 0 64
 
 If ($Global:Err_Return -eq 0)
 {
-    ### Execute other actions: Suppress file, shortcuts...
+	### Execute other actions: Suppress file, shortcuts...
+	Unregister-ScheduledTask -TaskName "ADP Pointage $env:USERNAME" -TaskPath "\" -Confirm:$false -ErrorAction 'SilentlyContinue'
     CLS_REMOVEREGSIGN $Application_Name $Application_Version $Arch
 }        
 

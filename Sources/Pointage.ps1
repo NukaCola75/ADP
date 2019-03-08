@@ -22,7 +22,8 @@ function msgbox
     (
         [string]$Message,
         [string]$Title = 'Message box title',   
-        [string]$buttons = 'OKCancel'
+        [string]$buttons = 'OKCancel',
+        [string]$icon = 'Exclamation'
     )
     # This function displays a message box by calling the .Net Windows.Forms (MessageBox class)
      
@@ -40,16 +41,18 @@ function msgbox
        'RetryCancel'{$btn = [System.Windows.Forms.MessageBoxButtons]::RetryCancel; break}
        default {$btn = [System.Windows.Forms.MessageBoxButtons]::RetryCancel; break}
     }
+
+    $displayType = [System.Windows.Forms.MessageBoxOptions]"ServiceNotification"
      
     # Display the message box
-    $Return=[System.Windows.Forms.MessageBox]::Show($Message,$Title,$btn)
+    $Return=[System.Windows.Forms.MessageBox]::Show($Message,$Title,$btn,$icon, 'Button2', $displayType)
     $Return
 }
 
 function Pointage {
     ##################################### Authentification Bloc #####################################
     $TARGET = "-SM-https%3A%2F%2Fpointage.adp.com%2Figested%2F2_02_01%2Fpointage"
-    $USERNAME = Get-Content -Path ".\config.txt"
+    $USERNAME = Get-Content -Path ".\config.txt" -ErrorAction 'SilentlyContinue'
     $PASSWORD = (Get-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_Magic_Word" -ErrorAction 'SilentlyContinue').ADP_Magic_Word
 
     If (($PASSWORD) -AND ($USERNAME))
@@ -100,57 +103,65 @@ function Pointage {
                                 {
                                     $today = Get-Date -Format 'dd/MM/yyyy'
                                     New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate" -Value $today -Force -ErrorAction 'SilentlyContinue'
-                                    $res = msgbox "Pointage réussi !" "Succès" ok
+                                    $res = msgbox "Pointage réussi !" "Succès" ok "Exclamation"
                                     Exit
                                 }
                                 else
                                 {
-                                    $res = msgbox "Echec du pointage !" "Attention" ok
+                                    $res = msgbox "Echec du pointage !" "Attention" ok "Error"
                                     Exit
                                 }
                             }
                             else
                             {
-                                $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok
+                                $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok "Error"
                                 Exit
                             }
                         }
                         else
                         {
-                            $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok
+                            $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok "Error"
                             Exit
                         }
                     }
                 }
                 else 
                 {
-                    $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok
+                    $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok "Error"
                     Exit
                 }
             }
         }
         else
         {
-            $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok
+            $res = msgbox "Une erreur s'est produite. Veuillez vérifier votre connectivité réseau. Si le problème persiste, veuillez tester une connexion manuelle à ADP." "Attention" ok "Error"
             Exit
         }
     }
     else
     {
-        $res = msgbox "L'application n'est pas configurée, veuillez lancer l'outil de configuration." "Attention" ok
+        $res = msgbox "L'application n'est pas configurée, veuillez lancer l'outil de configuration." "Attention" ok "Exclamation"
         Exit
     }
 }
 
+function testADP {
+    If (!(Test-Connection "adp.com" -Quiet))
+    {
+        $res = msgbox "Le site adp.com n'est pas opérationnel ou vous n'êtes pas connecté au réseau." "Attention" ok "Error"
+        Exit
+    }
+}
 
 # Current Path
 $CurrentPath = Get-Location
 $PathExecute = (Convert-Path $CurrentPath)
 
 $today = Get-Date -Format 'dd/MM/yyyy'
-$storedDate = Get-ItemPropertyValue -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate"
-$cadre = Get-ItemPropertyValue -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_cadre"
+$storedDate = (Get-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate" -ErrorAction 'SilentlyContinue').ADP_pointageDate
+$cadre = (Get-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_cadre" -ErrorAction 'SilentlyContinue').ADP_cadre
 
+testADP
 
 if (($today -eq $storedDate) -AND ($cadre -eq $true))
 {
@@ -158,7 +169,7 @@ if (($today -eq $storedDate) -AND ($cadre -eq $true))
 }
 elseif (($today -ne $storedDate) -AND ($cadre -eq $true))
 {
-    $res = msgbox "Vous n'avez pas pointé aujourd'hui. Souhaitez vous le faire ?" "Attention" YesNo
+    $res = msgbox "Vous n'avez pas pointé aujourd'hui. Souhaitez vous le faire ?" "Attention" YesNo "Question"
     if ($res -eq "Yes")
     {
         Pointage
@@ -169,6 +180,10 @@ elseif (($today -ne $storedDate) -AND ($cadre -eq $true))
     }
 }
 elseif ($cadre -eq $false)
+{
+    Pointage
+}
+else
 {
     Pointage
 }

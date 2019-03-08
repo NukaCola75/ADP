@@ -668,7 +668,7 @@ Function REBOOT_DEMAND($RCode)
 
 $Installtype = "USER"               # USER for user installation or SYSTEM for a system installation
 $Application_Name = "ADP POINTAGE ASSIST"          # Application name
-$Application_Version = "V02.00"       # Application version
+$Application_Version = "V02.01"       # Application version
 $Editor = "CLS"                    # Editor
 $Install_Path = "C:\Users\$user\AppData\Roaming\CLS\ADP POINTAGE ASSIST"              # Install folder of the application
 $Technologie = "MSI"               # MSI, EXE, APPX, CAB, MSU or SCRIPT
@@ -728,13 +728,15 @@ KILL_PROCESS $Kill_Process
 
 # Bloc for Uninstall/Migration
 #EXECUTE_MIGRATION_EXE "C:\Program Files\Mozilla Firefox\uninstall\helper.exe" "/S" "REG KEY" "C:\Program Files\Mozilla Firefox\firefox.exe=57.0.2" 0 32
-#EXECUTE_MIGRATION_MSI "PRODUCT CODE or MSI FILE" "TRANSFORM" "/qn /l* `"C:\temp\sccm_logs\Remove_7ZIP V18.01.log`"" "PRODUCT CODE" "REG KEY" "FILE" 0 64
+#EXECUTE_MIGRATION_MSI "PRODUCT CODE or MSI FILE" "/qn /l* `"C:\temp\sccm_logs\Remove_7ZIP V18.01.log`"" "PRODUCT CODE" "REG KEY" "FILE" 0 64
 
+EXECUTE_MIGRATION_MSI "{EA5370B7-270B-471B-B521-60A803EF942C}" "/qn /l* `"C:\temp\sccm_logs\Remove_ADP POINTAGE ASSIST V02.00.log`"" "{EA5370B7-270B-471B-B521-60A803EF942C}" "" "" 0 64
 
 If ($Global:Err_Return -eq 0)
 {
 	### Execute other actions: Suppress file, shortcuts...
-	#CLS_REMOVEREGSIGN "APP NAME" "APP VERSION" $Arch
+	Unregister-ScheduledTask -TaskName "ADP Pointage $env:USERNAME" -TaskPath "\" -Confirm:$false -ErrorAction 'SilentlyContinue'
+	CLS_REMOVEREGSIGN "ADP POINTAGE ASSIST" "V02.00" $Arch
 }
 
 ######################################## END Migration ########################################
@@ -753,7 +755,7 @@ If ($Global:Err_Return -eq 0)
 #EXECUTE_INSTALLATION_CAB "moncab.CAB"
 #EXECUTE_INSTALLATION_MSU "monkb.MSU"
 
-EXECUTE_INSTALLATION_MSI "ADP POINTAGE ASSIST V02.00.msi" "" "/qn /l* `"C:\temp\sccm_logs\Install_ADP POINTAGE ASSIST V02.00.log`"" "{EA5370B7-270B-471B-B521-60A803EF942C}" "" "" 0 64
+EXECUTE_INSTALLATION_MSI "ADP POINTAGE ASSIST V02.01.msi" "" "/qn /l* `"C:\temp\sccm_logs\Install_ADP POINTAGE ASSIST V02.01.log`"" "{FE41F054-D03A-4244-887E-00ED680C82C5}" "" "" 0 64
 
 If ($Global:Err_Return -eq 0)
 {

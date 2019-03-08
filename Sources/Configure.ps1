@@ -19,6 +19,8 @@ Hide-Console 0
 $CurrentPath = Get-Location
 $PathExecute = (Convert-Path $CurrentPath)
 
+$ieConf = (Get-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -ErrorAction 'SilentlyContinue').IEisConfig
+
 # Chargement des assemblies
 [void][System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
 [void][System.Reflection.Assembly]::LoadWithPartialName("System.Drawing")
@@ -31,7 +33,8 @@ function msgbox
     (
         [string]$Message,
         [string]$Title = 'Message box title',   
-        [string]$buttons = 'OKCancel'
+        [string]$buttons = 'OKCancel',
+        [string]$icon = 'Exclamation'
     )
     # This function displays a message box by calling the .Net Windows.Forms (MessageBox class)
      
@@ -49,12 +52,50 @@ function msgbox
        'RetryCancel'{$btn = [System.Windows.Forms.MessageBoxButtons]::RetryCancel; break}
        default {$btn = [System.Windows.Forms.MessageBoxButtons]::RetryCancel; break}
     }
+
+    $displayType = [System.Windows.Forms.MessageBoxOptions]"ServiceNotification"
      
     # Display the message box
-    $Return=[System.Windows.Forms.MessageBox]::Show($Message,$Title,$btn)
+    $Return=[System.Windows.Forms.MessageBox]::Show($Message,$Title,$btn,$icon, 'Button2')
     $Return
 }
 
+
+function testADP {
+    If (!(Test-Connection "adp.com" -Quiet))
+    {
+        $res = msgbox "Le site adp.com n'est pas opérationnel ou vous n'êtes pas connecté au réseau." "Attention" ok "Error"
+        Exit
+    }
+}
+
+function testCredentials($username, $userpass) {
+    $loginUrl = "https://hr-services.fr.adp.com/ipclogin/1/loginform.fcc"
+    $TARGET = "-SM-https%3A%2F%2Fpointage.adp.com%2Figested%2F2_02_01%2Fpointage"
+    $formFields = "TARGET=" + $TARGET + "&USER=" + $username + "&PASSWORD=" + $userpass
+    $AuthRequest = Invoke-WebRequest -Uri $loginUrl -Method Post -Body $formFields -ContentType "application/x-www-form-urlencoded" -SessionVariable websession
+    $cookies = $websession.Cookies.GetCookies($loginUrl) 
+
+    if ($cookies)
+    {
+        foreach ($cookie in $cookies)
+        {
+            if (($cookie.name -eq "SMSESSION") -AND ($cookie.value))
+            {
+                return $true
+                break
+            }
+            else
+            {
+                return $false
+            }
+        }
+    }
+    else
+    {
+        return $false
+    }
+}
 
 # Creation de la form principale
 $form = New-Object Windows.Forms.Form
@@ -66,7 +107,7 @@ $form.MinimizeBox = $false
 # Choix du titre
 $form.Text = "ADP Pointage Assist Configuration"
 # Choix de la taille
-$form.Size = New-Object System.Drawing.Size(300,400)
+$form.Size = New-Object System.Drawing.Size(300,440)
 
 # IMG File
 $file = (get-item $PathExecute'\IMG\CLS.png')
@@ -113,11 +154,18 @@ $checkBox_cadre.Size = New-Object System.Drawing.Size(250,20)
 $checkBox_cadre.Text = "Je suis cadre"
 $checkBox_cadre.Font = 'Segoe UI, 14pt'
 
+# CheckBox
+$checkBox_nocadre = New-Object System.Windows.Forms.CheckBox
+$checkBox_nocadre.Location = New-Object System.Drawing.Point(8,310)
+$checkBox_nocadre.Size = New-Object System.Drawing.Size(250,20)
+$checkBox_nocadre.Text = "Je suis non cadre"
+$checkBox_nocadre.Font = 'Segoe UI, 14pt'
+
 # Validation button
 $button_validate = New-Object System.Windows.Forms.Button
 $button_validate.Text = "Valider"
 $button_validate.Font = 'Segoe UI, 14pt, style=Bold'
-$button_validate.Location = New-Object System.Drawing.Point(90,310)
+$button_validate.Location = New-Object System.Drawing.Point(90,345)
 $button_validate.Size = New-Object System.Drawing.Size(100, 40)
 
 # Create Window
@@ -127,7 +175,19 @@ $form.Controls.Add($textbox_nom)
 $form.Controls.Add($label_text_pass)
 $form.Controls.Add($textbox_pass)
 $form.Controls.Add($checkBox_cadre)
+$form.Controls.Add($checkBox_nocadre)
 $form.Controls.Add($button_validate)
+
+
+$checkBox_cadre.Add_Click(
+{
+    $checkBox_nocadre.Checked = $false
+})
+
+$checkBox_nocadre.Add_Click(
+{
+    $checkBox_cadre.Checked = $false
+})
 
 
 $button_validate.Add_Click(
@@ -139,7 +199,15 @@ $button_validate.Add_Click(
 
     if (!$nom -or !$pass)
     {
-        $res = msgbox "L'identifiant et le mot de passe sont obligatoires." "Attention" ok
+        $res = msgbox "L'identifiant et le mot de passe sont obligatoires." "Attention" ok "Exclamation"
+    }
+    elseif ((!$checkBox_cadre.Checked) -and (!$checkBox_nocadre.Checked))
+    {
+        $res = msgbox "Vous devez obligatoirement préciser si vous êtes cadre ou non cadre." "Attention" ok "Exclamation"
+    }
+    elseif (!(testCredentials $nom $pass))
+    {
+        $res = msgbox "Vos identifiants sont incorrects." "Attention" ok "Error"
     }
     else 
     {
@@ -151,7 +219,10 @@ $button_validate.Add_Click(
         Set-Content -Path ".\config.txt" -Value $nom
         
         # Config key creation
-        New-Item -Path "HKCU:\Software\CLS\APP\ADP" -Force -ErrorAction 'SilentlyContinue'
+        if (!Test-Path "HKCU:\Software\CLS\APP\ADP")
+        {
+            New-Item -Path "HKCU:\Software\CLS\APP\ADP" -Force -ErrorAction 'SilentlyContinue'
+        }
 
         # Set value
         New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_Magic_Word" -Value $pass -ErrorAction 'SilentlyContinue'
@@ -161,7 +232,7 @@ $button_validate.Add_Click(
             New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_Cadre" -Value $true -Force -ErrorAction 'SilentlyContinue'
             # Configure scheduled task
             $triggers = @()
-            $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "& `"$PathExecute\Pointage.ps1`""
+            $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -file `"$PathExecute\Pointage.ps1`""
             $triggers += New-ScheduledTaskTrigger -AtLogOn -User "PC-CLS\$env:USERNAME"
             $triggers += New-ScheduledTaskTrigger -Daily -At "10:00"
             $triggers += New-ScheduledTaskTrigger -Daily -At "14:00"
@@ -173,15 +244,35 @@ $button_validate.Add_Click(
             New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_Cadre" -Value $false -Force -ErrorAction 'SilentlyContinue'
         }
 
-        New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate" -Value "01/01/1970" -Force -ErrorAction 'SilentlyContinue'
+        $res = msgbox "Avez-vous déjà pointé aujourd'hui ?" "Attention" YesNo "Question"
+        if ($res -eq "Yes")
+        {
+            $today = Get-Date -Format 'dd/MM/yyyy'
+            New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate" -Value $today -Force -ErrorAction 'SilentlyContinue'
+        }
+        else
+        {
+            New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate" -Value "01/01/1970" -Force -ErrorAction 'SilentlyContinue'
+        }
+
+        If (($ieConf -eq $null) -OR ($ieConf -eq $false))
+        {
+            Write-Host $ieConf
+            $ie = Start-Process -WindowStyle Minimized iexplore -passthru
+            Start-Sleep -s 5
+            Stop-Process -Id $ie.Id
+            New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "IEisConfig" -Value $true -Force -ErrorAction 'SilentlyContinue'
+        }
 
         # Show success message
-        $res = msgbox "Configuration terminée. Vous pouvez relancer cet outil si besoin." "Succès" ok
+        $res = msgbox "Configuration terminée. Vous pouvez relancer cet outil si besoin." "Succès" ok "Information"
 
         # Close the window
         $form.Close()
     }
 })
+
+testADP
 
 # Open the window
 $form.ShowDialog()
