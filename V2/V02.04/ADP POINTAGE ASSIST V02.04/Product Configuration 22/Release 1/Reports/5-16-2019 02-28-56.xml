@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="C:\Program Files (x86)\InstallShield\2018\Support\0409\buildreport.xsl"?>
+<BuildReport ProductName="ADP POINTAGE ASSIST V02.05" ProductVersion="02.05.00" Built="5-16-2019 02-28-56" Config="Product Configuration 22" Media="Release 1" Uncompressed="0.00 MB">
+  <Features>
+    <Feature Title="##ID_STRING5##">InstallFiles</Feature>
+  </Features>
+  <Components>
+    <Component x64="32">AllOtherFiles</Component>
+    <Component x64="32">AllOtherFiles1</Component>
+    <Component x64="32">NewComponent1</Component>
+    <Component x64="32">NewComponent2</Component>
+  </Components>
+  <Prerequisites />
+  <MergeModules />
+  <DynamicLinks />
+  <Files>
+    <File Destination="{IMG} [AppDataFolder]CLS\ADP POINTAGE ASSIST\IMG" Component="AllOtherFiles1" Modified="06/12/2017 15:50:37" Size="4960" Version="">CLS.png</File>
+    <File Destination="{INSTALLDIR} [AppDataFolder]CLS\ADP POINTAGE ASSIST" Component="AllOtherFiles" Modified="16/05/2019 14:05:53" Size="14695" Version="">Pointage.ps1</File>
+    <File Destination="{INSTALLDIR} [AppDataFolder]CLS\ADP POINTAGE ASSIST" Component="AllOtherFiles" Modified="16/05/2019 14:25:56" Size="10040" Version="">Configure.ps1</File>
+  </Files>
+</BuildReport>

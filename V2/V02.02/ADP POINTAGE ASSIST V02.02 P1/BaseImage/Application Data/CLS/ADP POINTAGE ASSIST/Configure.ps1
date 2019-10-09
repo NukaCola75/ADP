@@ -15,7 +15,6 @@ function HIDE-CONSOLE($hide)
 # Hide Powershell console host
 Hide-Console 0
 
-[Net.ServicePointManager]::SecurityProtocol = [net.SecurityProtocolType]::Tls12 # Active & force TLS 1.2 support
 # Current Path
 $CurrentPath = Get-Location
 $PathExecute = (Convert-Path $CurrentPath)
@@ -61,15 +60,8 @@ function msgbox
     $Return
 }
 
-function URLEncode($pass)
-{
-    Add-Type -Assembly System.Web
-    $pass = [System.Web.HttpUtility]::UrlEncode($pass)
-    return $pass
-}
 
-
-function ADP {
+function testADP {
     If (!(Test-Connection "adp.com" -Quiet))
     {
         $res = msgbox "Le site adp.com n'est pas opérationnel ou vous n'êtes pas connecté au réseau." "Attention" ok "Error"
@@ -78,9 +70,8 @@ function ADP {
 }
 
 function testCredentials($username, $userpass) {
-    $userpass = URLEncode $userpass
     $loginUrl = "https://hr-services.fr.adp.com/ipclogin/1/loginform.fcc"
-    $TARGET = "-SM-https://pointage.adp.com/igested/pointage"
+    $TARGET = "-SM-https%3A%2F%2Fpointage.adp.com%2Figested%2F2_02_01%2Fpointage"
     $formFields = "TARGET=" + $TARGET + "&USER=" + $username + "&PASSWORD=" + $userpass
     $AuthRequest = Invoke-WebRequest -Uri $loginUrl -Method Post -Body $formFields -ContentType "application/x-www-form-urlencoded" -SessionVariable websession
     $cookies = $websession.Cookies.GetCookies($loginUrl) 
@@ -94,8 +85,11 @@ function testCredentials($username, $userpass) {
                 return $true
                 break
             }
+            else
+            {
+                return $false
+            }
         }
-        return $false
     }
     else
     {
@@ -213,16 +207,16 @@ $button_validate.Add_Click(
     }
     elseif (!(testCredentials $nom $pass))
     {
-        $res = msgbox "Vos identifiants sont incorrects ou votre mot de passe est sur le point d'expirer." "Attention" ok "Error"
+        $res = msgbox "Vos identifiants sont incorrects." "Attention" ok "Error"
     }
     else 
     {
         # Config file creation
-        New-Item "$PathExecute\config.txt" -Force
-        Set-Content -Path "$PathExecute\config.txt" -Value $null
+        New-Item -Name "config.txt" -Force
+        Set-Content -Path ".\config.txt" -Value $null
 
         # Set username in config file
-        Set-Content -Path "$PathExecute\config.txt" -Value $nom
+        Set-Content -Path ".\config.txt" -Value $nom
         
         # Config key creation
         if (!(Test-Path "HKCU:\Software\CLS\APP\ADP"))
@@ -231,7 +225,7 @@ $button_validate.Add_Click(
         }
 
         # Set value
-        New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_Magic_Word" -Value $pass -Force -ErrorAction 'SilentlyContinue'
+        New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_Magic_Word" -Value $pass -ErrorAction 'SilentlyContinue'
 
         if ($checkBox_cadre.Checked)
         {
@@ -250,11 +244,22 @@ $button_validate.Add_Click(
             New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_Cadre" -Value $false -Force -ErrorAction 'SilentlyContinue'
         }
 
+        $res = msgbox "Avez-vous déjà pointé aujourd'hui ?" "Attention" YesNo "Question"
+        if ($res -eq "Yes")
+        {
+            $today = Get-Date -Format 'dd/MM/yyyy'
+            New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate" -Value $today -Force -ErrorAction 'SilentlyContinue'
+        }
+        else
+        {
+            New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "ADP_pointageDate" -Value "01/01/1970" -Force -ErrorAction 'SilentlyContinue'
+        }
+
         If (($ieConf -eq $null) -OR ($ieConf -eq $false))
         {
             Write-Host $ieConf
             $ie = Start-Process -WindowStyle Minimized iexplore -passthru
-            Start-Sleep -s 10
+            Start-Sleep -s 5
             Stop-Process -Id $ie.Id
             New-ItemProperty -Path "HKCU:\Software\CLS\APP\ADP" -Name "IEisConfig" -Value $true -Force -ErrorAction 'SilentlyContinue'
         }
@@ -267,7 +272,7 @@ $button_validate.Add_Click(
     }
 })
 
-ADP
+testADP
 
 # Open the window
 $form.ShowDialog()
